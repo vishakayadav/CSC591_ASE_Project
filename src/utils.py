@@ -36,6 +36,15 @@ def rnd(n: float, n_places: int = 2) -> float:
     return math.floor(n * mult + 0.5) / mult
 
 
+def per(t, p):
+    """
+    Returns value of t at pth position,
+    where p is calculated using the given value and the length of t
+    """
+    p = math.floor(((p or 0.5) * len(t)) + 0.5)
+    return t[max(0, min(len(t), p) - 1)]
+
+
 def cosine(a: float, b: float, c: float) -> (float, float):
     """
     Get x, y from a line connecting `a` to `b`
@@ -212,46 +221,6 @@ def merge(rx1, rx2):
     rx3["has"].sort()
     rx3["n"] = len(rx3["has"])
     return rx3
-
-
-def scott_knot(rxs):
-    def merges(i, j):
-        out = RX([], rxs[i]["name"])
-        for k in range(i, j + 1):
-            out = merge(out, rxs[j])
-        return out
-
-    def same(lo, cut, hi):
-        l = merges(lo, cut)
-        r = merges(cut + 1, hi)
-        return cliffs_delta(l["has"], r["has"]) and bootstrap(l["has"], r["has"])
-
-    def recurse(lo, hi, rank):
-        b4 = merges(lo, hi)
-        best = 0
-        cut = None
-        for j in range(lo, hi + 1):
-            if j < hi:
-                l = merges(lo, j)
-                r = merges(j + 1, hi)
-                now = (
-                              l["n"] * (mid(l) - mid(b4)) ** 2 + r["n"] * (mid(r) - mid(b4)) ** 2
-                      ) / (l["n"] + r["n"])
-                if now > best:
-                    if abs(mid(l) - mid(r)) >= cohen:
-                        cut, best = j, now
-        if cut != None and not same(lo, cut, hi):
-            rank = recurse(lo, cut, rank) + 1
-            rank = recurse(cut + 1, hi, rank)
-        else:
-            for i in range(lo, hi + 1):
-                rxs[i]["rank"] = rank
-        return rank
-
-    rxs.sort(key=lambda x: mid(x))
-    cohen = div(merges(0, len(rxs) - 1)) * the["cohen"]
-    recurse(0, len(rxs) - 1, 1)
-    return rxs
 
 
 def tiles(rxs):

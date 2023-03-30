@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 from src import utils
 from src.data import DATA
+from src.discretization import bins
 from src.rule import RULE
 
 
@@ -15,19 +16,15 @@ def xpln(data: DATA, best, rest) -> (dict, float):
     def score(ranges: list) -> (float, dict):
         rule = RULE().create(ranges, max_sizes)
         if rule:
-            print(show_rule(rule))
             bestr = selects(rule, best.rows)
             restr = selects(rule, rest.rows)
             if len(bestr) + len(restr) > 0:
                 return v({"best": len(bestr), "rest": len(restr)}), rule
-            else:
-                return None, rule
+        return None, None
 
-    for ranges in utils.bins(data.cols.x, {"best": best.rows, "rest": rest.rows}):
-        max_sizes[ranges[1]["txt"]] = len(ranges)
-        print("")
+    for ranges in bins(data.cols.x, {"best": best.rows, "rest": rest.rows}):
+        max_sizes[ranges[0]["txt"]] = len(ranges)
         for range in ranges:
-            print(range["txt"], range["lo"], range["hi"])
             tmp.append({"range": range, "max": len(ranges), "val": v(range["y"].has)})
     rule, most = first_n(sorted(tmp, key=lambda k: k["val"], reverse=True), score)
     return rule, most
@@ -36,19 +33,7 @@ def xpln(data: DATA, best, rest) -> (dict, float):
 def first_n(
     sorted_ranges: list, score_fun: Callable[[list], (float, dict)]
 ) -> (dict, float):
-    print("")
 
-    def print_func(r):
-        print(
-            r["range"]["txt"],
-            r["range"]["lo"],
-            r["range"]["hi"],
-            utils.rnd(r["val"]),
-            r["range"]["y"].has,
-        )
-
-    _ = list(map(print_func, sorted_ranges))
-    print()
     first = sorted_ranges[0]["val"]
 
     def useful(range):
