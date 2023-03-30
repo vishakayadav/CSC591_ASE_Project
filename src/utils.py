@@ -1,18 +1,17 @@
-import json
 import math
-import re
+import random
 from copy import deepcopy
 from pathlib import Path
-from typing import Union, List
+from typing import Union
 
 import settings
-from src.range import RANGE
-from src.sym import SYM
 
 the = settings.THE
 seed = settings.SEED
 help_string = settings.HELP
 example_funcs = settings.EXAMPLE_FUNCS
+result_table = settings.RESULT_TABLE
+comparisons = settings.COMPARISONS
 
 
 # Numeric Operations
@@ -41,7 +40,7 @@ def cosine(a: float, b: float, c: float) -> (float, float):
     """
     Get x, y from a line connecting `a` to `b`
     """
-    x1 = (a**2 + c**2 - b**2) / ((2 * c) or 1)  # might be an issue if c is 0
+    x1 = (a ** 2 + c ** 2 - b ** 2) / ((2 * c) or 1)  # might be an issue if c is 0
     return x1
 
 
@@ -106,6 +105,12 @@ def many(t: list, n: int) -> list:
     return u
 
 
+def gaussian(mu: float = 0, sd: float = 1) -> float:
+    """Returns a sample from a Gaussian with mean `mu` and sd `sd`"""
+    r = random.random
+    return mu + sd * math.sqrt(-2 * math.log(r())) * math.cos(2 * math.pi * r())
+
+
 def copy(t: Union[dict, list]) -> Union[dict, list]:
     """Returns deep copy"""
     return deepcopy(t)
@@ -157,119 +162,11 @@ def csv(s_filename: str, func) -> None:
         return None
 
     t = []
-    with open(s_file.absolute(), "r") as file:
+    with open(s_file.absolute(), "r", encoding='utf-8') as file:
         for _, line in enumerate(file):
             row = list(map(coerce, line.strip().split(",")))
             t.append(row)
             func(row)
-
-
-# Clustering
-def show_tree(node, what, cols, n_places, lvl=0):
-    """Cluster can be displayed by this function."""
-    if node:
-        print("|.. " * lvl + "[" + str(len(node["data"].rows)) + "]" + "  ", end="")
-        if not node.get("left") or lvl == 0:
-            print(node["data"].stats("mid", node["data"].cols.y, n_places))
-        else:
-            print("")
-        show_tree(node.get("left"), what, cols, n_places, lvl + 1)
-        show_tree(node.get("right"), what, cols, n_places, lvl + 1)
-
-
-# Discretization
-def bins(cols, rowss):
-    """
-    Return RANGEs that distinguish sets of rows (stored in `rowss`).
-    To reduce the search space, values in `col` are mapped to small number of `bin`s.
-    For NUMs, that number is `the.bins=16` (say) (and after dividing the column into, say, 16 bins,
-    then we call `mergeAny` to see how many of them can be combined with their neighboring bin).
-    """
-    out = []
-    for col in cols:
-        ranges = {}
-        for y, rows in rowss.items():
-            for row in rows:
-                x = row.cells[col.at]
-                if x != "?":
-                    k = int(bin(col, x))
-                    range = RANGE(col.at, col.txt, x)
-                    ranges[k] = ranges[k] if k in ranges else range.get()
-                    range.extend(ranges[k], x, y)
-        map(itself, ranges)
-        ranges = list(dict(sorted(ranges.items())).values())
-        out.append(ranges if isinstance(col, SYM) else merge_any(ranges))
-    return out
-
-
-def bin(col, x) -> int:
-    """
-    Map `x` into a small number of bins. `SYM`s just get mapped to themselves but
-    `NUM`s get mapped to one of `the.bins` values.
-    Called by function `bins`.
-    """
-    if x == "?" or isinstance(col, SYM):
-        return x
-    tmp = (col.hi - col.lo) / (the["bins"] - 1)
-    return 1 if col.hi == col.lo else math.floor(float(x) / tmp + 0.5) * tmp
-
-
-def merge_any(ranges0):
-    """
-    Given a sorted list of ranges, try fusing adjacent items (stopping when no more fuse-ings can be found).
-    When done, make the ranges run from minus to plus infinity (with no gaps in between).
-    Called by function `bins`.
-    """
-
-    def no_gaps(t):
-        for j in range(1, len(t)):
-            t[j]["lo"] = t[j - 1]["hi"]
-        t[0]["lo"] = -math.inf
-        t[len(t) - 1]["hi"] = math.inf
-        return t
-
-    ranges1, j = [], 0
-    while j < len(ranges0):
-        left = ranges0[j]
-        right = None
-        try:
-            right = ranges0[j + 1]
-        except:
-            pass
-        if right:
-            y = merge2(left["y"], right["y"])
-            if y:
-                j = j + 1
-                left["hi"], left["y"] = right["hi"], y
-        ranges1.append(left)
-        j = j + 1
-    return no_gaps(ranges0) if len(ranges0) == len(ranges1) else merge_any(ranges1)
-
-
-def merge2(col1, col2):
-    """
-    If the whole is as good (or simpler) than the parts, then return the combination of 2 `col`s.
-    Called by function `mergeMany`.
-    """
-    new = merge(col1, col2)
-    if new.div() <= (col1.div() * col1.n + col2.div() * col2.n) / new.n:
-        return new
-
-
-def merge(col1, col2):
-    """
-    Merge two `cols`. Called by function `merge2`
-    """
-    new = deepcopy(col1)
-    if isinstance(col1, SYM):
-        for n in col2.has:
-            new.add(n)
-    else:
-        for n in col2.has:
-            new.add(new, n)
-        new.lo = min(col1.lo, col2.lo)
-        new.hi = max(col1.hi, col2.hi)
-    return new
 
 
 # Miscellaneous Operations
@@ -290,140 +187,107 @@ def value(has: dict, nb: int = 1, nr: int = 1, sgoal=None) -> float:
             r = r + n
     b = b / (nb + 1 / math.inf)
     r = r / (nr + 1 / math.inf)
-    return b**2 / (b + r)
+    return b ** 2 / (b + r)
 
 
-def cliffs_delta(ns1, ns2) -> bool:
-    """
-    Non-parametric effect-size test M.Hess, J.Kromrey.
-    Robust Confidence Intervals for Effect Sizes:
-    A Comparative Study of Cohen's d and Cliff's Delta Under Non-normality and Heterogeneous Variances
-    American Educational Research Association, San Diego, April 12 - 16, 2004
-    0.147=  small, 0.33 =  medium, 0.474 = large; med --> small at .2385
-    """
-    if len(ns1) > 256:
-        ns1 = many(ns1, 256)
-    if len(ns2) > 256:
-        ns2 = many(ns2, 256)
-    if len(ns1) > 10 * len(ns2):
-        ns1 = many(ns1, 10 * len(ns2))
-    if len(ns2) > 10 * len(ns1):
-        ns2 = many(ns2, 10 * len(ns1))
-    n, gt, lt = 0, 0, 0
-    for x in ns1:
-        for y in ns2:
-            n = n + 1
-            if x > y:
-                gt = gt + 1
-            if x < y:
-                lt = lt + 1
-    return (abs(lt - gt) / n) > the["cliffs"]
+def RX(t: list, s: str) -> dict:
+    t.sort()
+    return {"name": s or "", "rank": 0, "n": len(t), "show": "", "has": t}
 
 
-def dofile(file: str) -> dict:
-    """
-    Loads the file
-    :param file: file name to be read
-    :return:
-    """
-    file = open(file, "r", encoding="utf-8")
-    text = (
-        re.findall(r"(?<=return )[^.]*", file.read())[0]
-        .replace("{", "[")
-        .replace("}", "]")
-        .replace("=", ":")
-        .replace("[\n", "{\n")
-        .replace(" ]", " }")
-        .replace("'", '"')
-        .replace("_", '"_"')
-    )
-    file.close()
-    return json.loads(re.sub(r"(\w+):", r'"\1":', text))
+def mid(t):
+    t = t["has"] if "has" in t else t
+    n = (len(t) - 1) // 2
+    return (t[n] + t[n + 1]) / 2 if len(t) % 2 == 0 else t[n + 1]
 
 
-# Rep Grid util functions
-def rep_cols(cols, data: "DATA") -> "DATA":
-    cols = copy(cols)
-    for col in cols:
-        col[len(col) - 1] = col[0] + ":" + col[len(col) - 1]
-        for j in range(1, len(col)):
-            col[j - 1] = col[j]
-        col.pop()
-    first_col = ["Num" + str(k + 1) for k in range(len(cols[0]))]
-    cols.insert(0, first_col)
-    cols[0][len(cols[0]) - 1] = "thingX"
-    return data(cols)
+def div(t):
+    t = t["has"] if "has" in t else t
+    return (t[len(t) * 9 // 10] - t[len(t) * 1 // 10]) / 2.56
 
 
-def rep_rows(t, data: "DATA", rows: List["ROW"]) -> "DATA":
-    rows = copy(rows)
-    for j, s in enumerate(rows[-1]):
-        rows[0][j] += ":" + s
-    rows.pop()
-    for n, row in enumerate(rows):
-        if n == 0:
-            row.append("thingX")
+def merge(rx1, rx2):
+    rx3 = RX([], rx1["name"])
+    rx3["has"] = rx1["has"] + rx2["has"]
+    rx3["has"].sort()
+    rx3["n"] = len(rx3["has"])
+    return rx3
+
+
+def scott_knot(rxs):
+    def merges(i, j):
+        out = RX([], rxs[i]["name"])
+        for k in range(i, j + 1):
+            out = merge(out, rxs[j])
+        return out
+
+    def same(lo, cut, hi):
+        l = merges(lo, cut)
+        r = merges(cut + 1, hi)
+        return cliffs_delta(l["has"], r["has"]) and bootstrap(l["has"], r["has"])
+
+    def recurse(lo, hi, rank):
+        b4 = merges(lo, hi)
+        best = 0
+        cut = None
+        for j in range(lo, hi + 1):
+            if j < hi:
+                l = merges(lo, j)
+                r = merges(j + 1, hi)
+                now = (
+                              l["n"] * (mid(l) - mid(b4)) ** 2 + r["n"] * (mid(r) - mid(b4)) ** 2
+                      ) / (l["n"] + r["n"])
+                if now > best:
+                    if abs(mid(l) - mid(r)) >= cohen:
+                        cut, best = j, now
+        if cut != None and not same(lo, cut, hi):
+            rank = recurse(lo, cut, rank) + 1
+            rank = recurse(cut + 1, hi, rank)
         else:
-            u = t["rows"][-n]
-            row.append(u[-1])
-    return data(rows)
+            for i in range(lo, hi + 1):
+                rxs[i]["rank"] = rank
+        return rank
+
+    rxs.sort(key=lambda x: mid(x))
+    cohen = div(merges(0, len(rxs) - 1)) * the["cohen"]
+    recurse(0, len(rxs) - 1, 1)
+    return rxs
 
 
-def rep_place(data: "DATA") -> None:
-    n = 20
-    g = [[" " for _ in range(n)] for _ in range(n)]
-    maxy = 0
-    print("")
-    for r, row in enumerate(data.rows):
-        c = chr(65 + r)
-        print(c, row.cells[-1])
-        x, y = int(row.x * n // 1), int(row.y * n // 1)
-        maxy = int(max(maxy, y + 1))
-        g[y][x] = c
-    print("")
-    for y in range(maxy):
-        print(" ".join(g[y]))
+def tiles(rxs):
+    huge = float("inf")
+    lo, hi = huge, float("-inf")
+    for rx in rxs:
+        lo, hi = min(lo, rx["has"][0]), max(hi, rx["has"][len(rx["has"]) - 1])
+    for rx in rxs:
+        t, u = rx["has"], []
 
+        def of(x, most):
+            return int(max(1, min(most, x)))
 
-def transpose(t):
-    u = []
-    for i in range(len(t[0])):
-        u.append([row[i] for row in t])
-    return u
+        def at(x):
+            return t[of(len(t) * x // 1, len(t)) - 1]
 
+        def pos(x):
+            return math.floor(
+                of(the["width"] * (x - lo) / (hi - lo + 1e-32) // 1, the["width"])
+            )
 
-def rep_grid(source_file: str, data: "DATA") -> None:
-    t = dofile(source_file)
-    rows = rep_rows(t, data, transpose(t["cols"]))
-    cols = rep_cols(t["cols"], data)
-    show(rows.cluster(), "mid", rows.cols.all, 1)
-    show(cols.cluster(), "mid", cols.cols.all, 1)
-    rep_place(rows)
-
-
-def show(
-    node,
-    what: str = "mid",
-    cols: List[Union["Num", "Sym"]] = None,
-    n_places: int = 0,
-    lvl: int = 0,
-) -> None:
-    """
-    Prints the tree
-    :param node: Node of tree
-    :param what: str: Statistics to print
-    :param cols: list: Columns to print stats for
-    :param n_places: int: Number of decimals to round the values to
-    :param lvl: int: Level in the tree (default = 0)
-    """
-    if node:
-        print("|.." * lvl, end="")
-        if not node.get("left"):
-            print(node["data"].rows[-1].cells[-1])
-        else:
-            print(int(rnd(100 * node["c"], 0)))
-        show(node.get("left"), what, cols, n_places, lvl + 1)
-        show(node.get("right"), what, cols, n_places, lvl + 1)
+        for i in range(0, the["width"] + 1):
+            u.append(" ")
+        a, b, c, d, e = at(0.1), at(0.3), at(0.5), at(0.7), at(0.9)
+        A, B, C, D, E = pos(a), pos(b), pos(c), pos(d), pos(e)
+        for i in range(A, B + 1):
+            u[i] = "-"
+        for i in range(D, E + 1):
+            u[i] = "-"
+        u[the["width"] // 2] = "|"
+        u[C] = "*"
+        x = []
+        for i in [a, b, c, d, e]:
+            x.append(the["Fmt"] % i)
+        rx["show"] = "".join(u) + str(x)
+    return rxs
 
 
 # Test Engine util function

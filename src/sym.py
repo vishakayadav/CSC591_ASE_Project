@@ -15,6 +15,8 @@ class SYM:
     def add(self, x: str, count: int = 1) -> None:
         """
         Update counts of things seen so far
+        :param x: str: Symbol to add
+        :param count: int: number of times to add
         """
         if x != "?":
             self.n += count
