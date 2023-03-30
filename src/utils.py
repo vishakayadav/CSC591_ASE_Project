@@ -259,6 +259,16 @@ def tiles(rxs):
     return rxs
 
 
+def get_stats(data_array):
+    result = {}
+    for data in data_array:
+        for k, v in data.stats().items():
+            result[k] = result.get(k, 0) + v
+    for k, v in result.items():
+        result[k] /= the['niter']
+    return result
+
+
 # Test Engine util function
 def example(key: str, text: str, fun) -> None:
     """
