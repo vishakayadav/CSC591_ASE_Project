@@ -1,4 +1,5 @@
 import math
+from functools import cmp_to_key
 from typing import Union, List, Tuple
 
 from src import utils
@@ -43,14 +44,12 @@ class DATA:
         list(map(data.add, init))
         return data
 
-    def stats(
-        self, what: str = "mid", cols=None, n_places: int = 0
-    ) -> (Union[float, str], str):
+    def stats(self, what: str = "mid", cols=None, n_places: int = 0) -> (Union[float, str], str):
         """
         Reports mid or div of cols (defaults to i.cols.y)
-        :param what: str: (Default value = None)
-        :param cols: (Default value = None)
-        :param n_places: int: (Default value = 0)
+        :param what: str: Statistics to collect (Default value = None)
+        :param cols: Columns on which statistics is collected (Default value = None)
+        :param n_places: int: Decimal places to round (Default value = 0)
         :return: tuple(Union[float, str], str)
         """
 
@@ -93,35 +92,6 @@ class DATA:
             d += col.dist(row1.cells[col.at], row2.cells[col.at]) ** the["p"]
         return (d / n) ** (1 / the["p"])
 
-    def around(
-        self, row1: ROW, rows: List[ROW] = None, cols: List[Union[NUM, SYM]] = None
-    ) -> List[dict]:
-        """
-        Sorts other `rows` by distance to `row1`
-        :param row1: ROW
-        :param rows: List[ROW]
-        :param cols: List[Union[NUM, SYM]]
-        :return: List of dictionary with distances of each row from `row1`
-        """
-
-        def func(row2):
-            return {"row": row2, "dist": self.dist(row1, row2, cols)}
-
-        return sorted(list(map(func, rows or self.rows)), key=lambda x: x["dist"])
-
-    def furthest(
-        self, row1: ROW, rows: List[ROW] = None, cols: List[Union[NUM, SYM]] = None
-    ) -> dict:
-        """
-        Sort other `rows` by distance to `row1` and get the farthest row
-        :param row1: ROW
-        :param rows: List[ROW]
-        :param cols: List[Union[NUM, SYM]]
-        :return: Farthest row from `row1`
-        """
-        t = self.around(row1, rows, cols)
-        return t[len(t) - 1]
-
     def half(
         self,
         rows: List[ROW] = None,
@@ -143,19 +113,15 @@ class DATA:
         rows = rows if rows else self.rows
         some = utils.many(rows, the["Halves"])
         A = (the["Reuse"] and above) or utils.any(some)
-        tmp = sorted(
-            map(lambda r: {"row": r, "d": dist(r, A)}, some), key=lambda x: x["d"]
-        )
-        far = tmp[int(the["Far"] * len(rows)) // 1]
+        tmp = sorted(map(lambda r: {"row": r, "d": dist(r, A)}, some), key=lambda x: x["d"])
+        far = tmp[int((len(tmp) - 1) * the['Far'])]
         B = far["row"]
         c = far["d"]
         left = []
         right = []
 
-        for n, tmp in enumerate(
-            sorted(list(map(project, rows)), key=lambda k: k["dist"])
-        ):
-            if n < len(rows) // 2:
+        for n, tmp in enumerate(sorted(list(map(project, rows)), key=lambda k: k["dist"])):
+            if (n + 1) < (len(rows) / 2):
                 left.append(tmp["row"])
             else:
                 right.append(tmp["row"])
@@ -221,6 +187,6 @@ class DATA:
         """
         tmp = sorted(
             self.rows,
-            key=lambda row: self.better(row, self.rows[self.rows.index(row) - 1]),
+            key=cmp_to_key(lambda row1, row2: -1 if self.better(row1, row2) else 1)
         )
-        return n and tmp[0:n], tmp[n + 1 :] or tmp
+        return n and tmp[1:n], tmp[n+1:] or tmp
