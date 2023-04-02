@@ -11,15 +11,17 @@ from src.utils import csv, the, cosine, kap
 
 
 class DATA:
-    def __init__(self, src: any) -> None:
+    def __init__(self, src: Union[str, list, "DATA"] = None, rows: Union[list, ROW] = None) -> None:
         self.rows = []
         self.cols = None
 
-        if isinstance(src, str):
-            csv(src, self.add)
-        else:
-            for row in src:
-                self.add(row)
+        if src or rows:
+            if isinstance(src, str):
+                csv(src, self.add)
+            else:
+                self.cols = COLS(src.cols.names)
+                for row in rows:
+                    self.add(row)
 
     def add(self, t: Union[ROW, list]) -> None:
         """
@@ -34,14 +36,21 @@ class DATA:
         else:
             self.cols = COLS(t)  # here, we create "i.cols" from the first row
 
-    def clone(self, init: list = []) -> "DATA":
+    def clone(self, init: list = None) -> "DATA":
         """
         Returns a clone with the same structure
         :param init: Initial data for the clone
         :return:
         """
-        data = DATA([self.cols.names])
-        list(map(data.add, init))
+        if init is None:
+            init = []
+
+        data = DATA()
+        data.add(self.cols.names)
+
+        for _, t in enumerate(init):
+            data.add(t)
+
         return data
 
     def stats(self, what: str = "mid", cols=None, n_places: int = 0) -> (Union[float, str], str):
@@ -59,6 +68,10 @@ class DATA:
 
         cols = cols or self.cols.y
         tmp = kap(cols, fun)
+
+        # alternative
+        # tmp = dict(sorted({col.txt: rnd(getattr(col, what)(), nPlaces) for col in cols or self.cols.y}.items()))
+
         tmp["N"] = len(self.rows)
         return tmp
 
