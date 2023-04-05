@@ -94,9 +94,10 @@ def selects(rule: dict, rows: list) -> list:
                 return False
         return True
 
-    # return list(filter(lambda r: conjunction(r), rows))
     def function(r):
         if conjunction(r):
             return r
+        else:
+            return None
 
-    return list(map(function, rows))
+    return list(filter(function, rows))
