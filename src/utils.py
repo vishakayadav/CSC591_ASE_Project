@@ -147,14 +147,15 @@ def coerce(s: str) -> any:
     """
     Return int or float or bool or string from `s`
     """
+    for digit in [int, float]:
+        try:
+            return digit(s)
+        except ValueError:
+            pass
     if s.lower() == "true":
         return True
     if s.lower() == "false":
         return False
-    if s.isdigit():
-        return int(s)
-    if s.replace(".", "").isdigit():
-        return float(s)
     return s
 
 
