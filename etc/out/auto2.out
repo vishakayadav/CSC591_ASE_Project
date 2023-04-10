@@ -1,0 +1,19 @@
+         CityMPG+    HighwayMPG+    U-turn_space    Weight-    Class-    n_evals avg
+-----  ----------  -------------  --------------  ---------  --------  -------------
+all            21             28              39       3040        18              0
+sway1       30.85           35.2            34.3    2133.75      8.95              5
+sway2        30.4           34.8            34.3     2120.5       8.7              5
+xpln1        28.6           33.3            35.1       2351     10.35              5
+xpln2        28.8          33.15            35.1     2328.5      10.1              5
+top            33           38.8           33.45       2001      8.45             93
+
+                CityMPG+    HighwayMPG+    U-turn_space    Weight-    Class-
+--------------  ----------  -------------  --------------  ---------  --------
+all to all      =           =              =               =          =
+all to sway1    ≠           ≠              ≠               ≠          ≠
+all to sway2    ≠           ≠              ≠               ≠          ≠
+sway1 to sway2  ≠           ≠              =               ≠          ≠
+sway1 to xpln1  ≠           ≠              ≠               ≠          ≠
+sway2 to xpln2  ≠           ≠              ≠               ≠          ≠
+sway1 to top    ≠           ≠              ≠               ≠          ≠
+xpln1 to top    ≠           ≠              ≠               ≠          ≠
