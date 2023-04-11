@@ -54,8 +54,9 @@ def main():
             best, rest, evals = data.sway()  # get the "sway" results
             rule, _ = xpln(data, best, rest)  # get the "xpln" results
 
-            best2, rest2, evals2 = data.sway()  # get the "sway" results
+            best2, rest2, evals2 = data.sway2()  # get the "sway" results
             rule2, _ = xpln(data, best2, rest2)  # get the "xpln" results
+
             # if rule is present
             if rule and rule2:
                 # store best data for each algo
@@ -70,9 +71,9 @@ def main():
                 # store no. of evaluations for each algo
                 result_table['all']['evals'] += 0  # 0 evals to get "all" data
                 result_table['sway1']['evals'] += evals  # sway() returns the evals
-                result_table['sway2']['evals'] += evals
+                result_table['sway2']['evals'] += evals2
                 result_table['xpln1']['evals'] += evals  # xpln() uses data from sway so same evals
-                result_table['xpln2']['evals'] += evals
+                result_table['xpln2']['evals'] += evals2
                 result_table['top']['evals'] += len(data.rows)  # betters() evaluates on each row
 
                 for i in range(len(comparisons)):
@@ -99,6 +100,10 @@ def main():
         # generate the stats table
         headers = [y.txt for y in data.cols.y]
         data_table = []
+
+        result_table['sway1 (with zitzler domination)'] = result_table.pop('sway1')
+        result_table['sway2 (with boolean domination)'] = result_table.pop('sway2')
+
 
         for k, v in result_table.items():
             stats = get_stats(v["data"])

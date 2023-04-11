@@ -75,7 +75,7 @@ class DATA:
         tmp["N"] = len(self.rows)
         return tmp
 
-    def better(self, row1: ROW, row2: ROW) -> bool:
+    def better_zitzler(self, row1: ROW, row2: ROW) -> bool:
         """
         Returns true if `row1` dominates (via Zitzler04)
         :param row1: ROW
@@ -90,6 +90,25 @@ class DATA:
             s1 = s1 - math.exp(col.w * (x - y) / len(ys))
             s2 = s2 - math.exp(col.w * (y - x) / len(ys))
         return s1 / len(ys) < s2 / len(ys)
+
+    def better_boolean(self, row1: ROW, row2: ROW) -> bool:
+        """
+        Returns true if `row1` dominates (via Boolean Domination)
+        :param row1: ROW
+        :param row2: ROW
+        :return: bool: true if row1 dominates
+        """
+        def dominates(row1, row2):
+            dominate = False
+            for col in self.cols.y:
+                x = col.norm(row1.cells[col.at]) * col.w * -1
+                y = col.norm(row2.cells[col.at]) * col.w * -1
+                if x > y:
+                    return False
+                elif x < y:
+                    dominate = True
+            return dominate
+        return dominates(row1, row2) and not dominates(row2, row1)
 
     def dist(self, row1: ROW, row2: ROW, cols: List[Union[NUM, SYM]] = None) -> float:
         """
@@ -182,7 +201,28 @@ class DATA:
                 return rows, utils.many(worse, the["rest"] * len(rows)), evals0
             else:
                 l, r, A, B, c, evals = self.half(rows=rows, above=above)
-                if self.better(B, A):
+                if self.better_zitzler(B, A):
+                    l, r, A, B = r, l, B, A
+                for row in r:
+                    worse.append(row)
+                return worker(l, worse, evals + evals0, A)
+
+        best, rest, evals = worker(data.rows, [], 0)
+        return self.clone(best), self.clone(rest), evals
+
+    def sway2(self) -> ("DATA", "DATA", int):
+        """
+        Recursively prune the worst half the data
+        :return: the survivors and some sample of the rest
+        """
+        data = self
+
+        def worker(rows, worse, evals0=None, above=None):
+            if len(rows) <= len(data.rows) ** the["min"]:
+                return rows, utils.many(worse, the["rest"] * len(rows)), evals0
+            else:
+                l, r, A, B, c, evals = self.half(rows=rows, above=above)
+                if self.better_boolean(B, A):
                     l, r, A, B = r, l, B, A
                 for row in r:
                     worse.append(row)
@@ -200,6 +240,6 @@ class DATA:
         """
         tmp = sorted(
             self.rows,
-            key=cmp_to_key(lambda row1, row2: -1 if self.better(row1, row2) else 1)
+            key=cmp_to_key(lambda row1, row2: -1 if self.better_zitzler(row1, row2) else 1)
         )
         return n and tmp[1:n], tmp[n+1:] or tmp
