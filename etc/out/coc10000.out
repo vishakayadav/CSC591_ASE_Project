@@ -1,0 +1,19 @@
+          Loc+    Risk-    Effort-    n_evals avg
+-----  -------  -------  ---------  -------------
+all        931        5      21427              0
+sway1    971.8     3.65    16968.7              8
+sway2  1023.05     3.65    14826.9              8
+xpln1   1006.6     5.15    19787.1              8
+xpln2   1013.7     5.05      19082              8
+top     1947.6        0      17734          10000
+
+                Loc+    Risk-    Effort-
+--------------  ------  -------  ---------
+all to all      =       =        =
+all to sway1    ≠       ≠        ≠
+all to sway2    ≠       =        ≠
+sway1 to sway2  ≠       ≠        ≠
+sway1 to xpln1  ≠       ≠        ≠
+sway2 to xpln2  ≠       ≠        ≠
+sway1 to top    ≠       ≠        ≠
+xpln1 to top    ≠       ≠        ≠

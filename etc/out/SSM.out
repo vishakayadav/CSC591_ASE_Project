@@ -1,0 +1,19 @@
+         NUMBERITERATIONS-    TIMETOSOLUTION-    n_evals avg
+-----  -------------------  -----------------  -------------
+all                      6                134              0
+sway1                  5.6             129.15             10
+sway2                  5.8              122.4             10
+xpln1                  5.8             120.55             10
+xpln2                 5.55              123.9             10
+top                      4                 60         239360
+
+                NUMBERITERATIONS-    TIMETOSOLUTION-
+--------------  -------------------  -----------------
+all to all      =                    =
+all to sway1    ≠                    ≠
+all to sway2    ≠                    ≠
+sway1 to sway2  ≠                    ≠
+sway1 to xpln1  ≠                    ≠
+sway2 to xpln2  ≠                    ≠
+sway1 to top    ≠                    ≠
+xpln1 to top    ≠                    ≠
