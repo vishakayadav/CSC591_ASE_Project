@@ -4,6 +4,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Union
 
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
 import settings
 
 the = settings.THE
@@ -177,6 +181,38 @@ def csv(s_filename: str, func) -> None:
             row = list(map(coerce, line.strip().split(",")))
             t.append(row)
             func(row)
+
+
+def create_preprocessed_csv(file_path):
+    """
+    Fills the missing values in the dataframe,
+    Applies label encoding to the categorical columns, and
+    Saves the preprocessed dataframe to a new CSV file
+    """
+    df = pd.read_csv(file_path)
+    df = fill_missing_values(df)
+    columns = df.columns
+    syms = [col for col in columns if col.strip()[0].islower() and df[col].dtype == 'O']
+    for sym in syms:
+        df[sym] = LabelEncoder().fit_transform(df[sym].astype(str))
+    preprocessed_file_path = file_path.replace('.csv', '_encoded.csv')
+    df.to_csv(preprocessed_file_path, index=False)
+
+
+def fill_missing_values(df):
+    """
+    Fills missing values with column means
+    Replace '?' with NaN, convert to float, and impute with column means
+    """
+    missing_cols = df.columns[df.isnull().any(axis=0)]
+    for col in missing_cols:
+        df[col].fillna(df[col].mean(), inplace=True)
+
+    missing_cols = df.columns[df.eq('?').any()]
+    for col in missing_cols:
+        df[col] = df[col].replace('?', np.nan).astype(float)
+        df[col].fillna(df[col].mean(), inplace=True)
+    return df
 
 
 # Miscellaneous Operations
