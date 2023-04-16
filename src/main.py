@@ -1,12 +1,13 @@
+import os.path
 import re
 import sys
 
 from tabulate import tabulate
 
 from src.comparison_stats import bootstrap, cliffs_delta
-from src.contrast_set import xpln, selects
+from src.contrast_set import xpln, selects, decision_tree
 from src.data import DATA
-from src.utils import coerce, the, help_string, result_table, comparisons, get_stats
+from src.utils import coerce, the, help_string, result_table, comparisons, get_stats, create_preprocessed_csv
 
 
 def settings(pstr):
@@ -49,14 +50,16 @@ def main():
         print(help_string)
     else:
         count = 0
+        create_preprocessed_csv(options["file"])
         data = DATA(options["file"])  # read in the data to get "all" result
+        preprocessed_data = DATA(os.path.splitext(options["file"])[0] + "_encoded.csv")
         while count < options["niter"]:
             best, rest, evals = data.sway()  # get the "sway" results
             rule, _ = xpln(data, best, rest)  # get the "xpln" results
 
-            best2, rest2, evals2 = data.sway2()  # get the "sway" results
-            rule2, _ = xpln(data, best2, rest2)  # get the "xpln" results
-
+            best2, rest2, evals2 = preprocessed_data.sway2()  # get the "sway" results
+            rule2, _ = xpln(preprocessed_data, best2, rest2)  # get the "xpln" results
+            # best_xpln2, rest_xpln2 = decision_tree(preprocessed_data, best2, rest2)  # get the "xpln" results
             # if rule is present
             if rule and rule2:
                 # store best data for each algo
@@ -65,15 +68,15 @@ def main():
                 result_table['sway1']['data'].append(best)
                 result_table['sway2']['data'].append(best2)
                 result_table['xpln1']['data'].append(DATA(data, selects(rule, data.rows)))
-                result_table['xpln2']['data'].append(DATA(data, selects(rule2, data.rows)))
+                result_table['xpln2']['data'].append(DATA(preprocessed_data, selects(rule2, preprocessed_data.rows)))
                 result_table['top']['data'].append(DATA(data, top))
 
                 # store no. of evaluations for each algo
                 result_table['all']['evals'] += 0  # 0 evals to get "all" data
                 result_table['sway1']['evals'] += evals  # sway() returns the evals
-                result_table['sway2']['evals'] += evals2
+                result_table['sway2']['evals'] += evals
                 result_table['xpln1']['evals'] += evals  # xpln() uses data from sway so same evals
-                result_table['xpln2']['evals'] += evals2
+                result_table['xpln2']['evals'] += evals
                 result_table['top']['evals'] += len(data.rows)  # betters() evaluates on each row
 
                 for i in range(len(comparisons)):
@@ -101,9 +104,8 @@ def main():
         headers = [y.txt for y in data.cols.y]
         data_table = []
 
-        result_table['sway1 (with zitzler domination)'] = result_table.pop('sway1')
-        result_table['sway2 (with boolean domination)'] = result_table.pop('sway2')
-
+        result_table['sway1 (half)'] = result_table.pop('sway1')
+        result_table['sway2 (kmeans)'] = result_table.pop('sway2')
 
         for k, v in result_table.items():
             stats = get_stats(v["data"])

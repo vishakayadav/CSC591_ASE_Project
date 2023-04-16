@@ -2,6 +2,9 @@ import math
 from functools import cmp_to_key
 from typing import Union, List, Tuple
 
+import numpy as np
+from sklearn.cluster import KMeans
+
 from src import utils
 from src.cols import COLS
 from src.num import NUM
@@ -161,6 +164,37 @@ class DATA:
         evals = 1 if the["Reuse"] and above else 2
         return left, right, A, B, c, evals
 
+    def kmeans(self, rows: List[ROW] = None) -> (list, list, ROW, ROW, int):
+        """
+        K-Means Clustering
+        :param rows: input data to be clustered
+        :return: left and right cluster with their respective centroids A and B
+        """
+        def dist(center, row, A):
+            A = A or row
+            return row if self.dist(A, center) > self.dist(A, row) else A
+
+        left = []
+        right = []
+
+        rows = rows or self.rows
+        row_set = np.array([row.cells for row in rows])
+        kmeans = KMeans(random_state=the['seed'], n_clusters=2, n_init=10)
+        kmeans.fit(row_set)
+        centroid1 = ROW(kmeans.cluster_centers_[0])
+        centroid2 = ROW(kmeans.cluster_centers_[1])
+
+        A, B, evals = None, None, 1
+        for key, value in enumerate(kmeans.labels_):
+            if value == 0:
+                A = dist(centroid1, rows[key], A)
+                left.append(rows[key])
+            else:
+                B = dist(centroid2, rows[key], B)
+                right.append(rows[key])
+
+        return left, right, A, B, evals
+
     def cluster(
         self,
         rows: List[ROW] = None,
@@ -212,21 +246,21 @@ class DATA:
 
     def sway2(self) -> ("DATA", "DATA", int):
         """
-        Recursively prune the worst half the data
+        Recursively prune the worst cluster of the data, where clustering is using kmeans
         :return: the survivors and some sample of the rest
         """
         data = self
 
-        def worker(rows, worse, evals0=None, above=None):
+        def worker(rows, worse, evals0=None):
             if len(rows) <= len(data.rows) ** the["min"]:
                 return rows, utils.many(worse, the["rest"] * len(rows)), evals0
             else:
-                l, r, A, B, c, evals = self.half(rows=rows, above=above)
-                if self.better_boolean(B, A):
+                l, r, A, B, evals = self.kmeans(rows)
+                if self.better_zitzler(B, A):
                     l, r, A, B = r, l, B, A
                 for row in r:
                     worse.append(row)
-                return worker(l, worse, evals + evals0, A)
+                return worker(l, worse, evals + evals0)
 
         best, rest, evals = worker(data.rows, [], 0)
         return self.clone(best), self.clone(rest), evals
