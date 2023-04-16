@@ -58,17 +58,17 @@ def main():
             rule, _ = xpln(data, best, rest)  # get the "xpln" results
 
             best2, rest2, evals2 = preprocessed_data.sway2()  # get the "sway" results
-            rule2, _ = xpln(preprocessed_data, best2, rest2)  # get the "xpln" results
-            # best_xpln2, rest_xpln2 = decision_tree(preprocessed_data, best2, rest2)  # get the "xpln" results
+            best_xpln2, rest_xpln2 = decision_tree(preprocessed_data, best2, rest2)  # get the "xpln" results
+
             # if rule is present
-            if rule and rule2:
+            if rule:
                 # store best data for each algo
                 top, _ = data.betters(len(best.rows))
                 result_table['all']['data'].append(data)
                 result_table['sway1']['data'].append(best)
                 result_table['sway2']['data'].append(best2)
                 result_table['xpln1']['data'].append(DATA(data, selects(rule, data.rows)))
-                result_table['xpln2']['data'].append(DATA(preprocessed_data, selects(rule2, preprocessed_data.rows)))
+                result_table['xpln2']['data'].append(DATA(preprocessed_data, best_xpln2))
                 result_table['top']['data'].append(DATA(data, top))
 
                 # store no. of evaluations for each algo
@@ -104,8 +104,11 @@ def main():
         headers = [y.txt for y in data.cols.y]
         data_table = []
 
-        result_table['sway1 (half)'] = result_table.pop('sway1')
-        result_table['sway2 (kmeans)'] = result_table.pop('sway2')
+        result_table["sway1 (half)"] = result_table.pop("sway1")
+        result_table["sway2 (kmeans)"] = result_table.pop("sway2")
+        result_table["xpln1"] = result_table.pop("xpln1")
+        result_table["xpln2 (kmeans & dtree)"] = result_table.pop("xpln2")
+        result_table["top"] = result_table.pop("top")
 
         for k, v in result_table.items():
             stats = get_stats(v["data"])

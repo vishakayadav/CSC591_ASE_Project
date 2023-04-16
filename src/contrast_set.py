@@ -1,5 +1,7 @@
 from collections.abc import Callable
 
+from sklearn.tree import DecisionTreeClassifier
+
 from src import utils
 from src.data import DATA
 from src.discretization import bins
@@ -101,3 +103,29 @@ def selects(rule: dict, rows: list) -> list:
             return None
 
     return list(filter(function, rows))
+
+
+def decision_tree(data, best, rest):
+    """
+    Converts the rows of best and rest into feature vectors and class labels,
+    Fits a decision tree classifier on the combined training set, and
+    Predicts the class labels for each row in the data object ,thereby classifying data into best and rest.
+    """
+    X_best = [[row.cells[col.at] for col in best.cols.x] for row in best.rows]
+    y_best = ["best"] * len(best.rows)
+    X_rest = [[row.cells[col.at] for col in rest.cols.x] for row in rest.rows]
+    y_rest = ["rest"] * len(rest.rows)
+    X_test = [[row.cells[col.at] for col in data.cols.x] for row in data.rows]
+
+    X_train, y_train = X_best + X_rest, y_best + y_rest
+    dt = DecisionTreeClassifier(random_state=0)
+    dt.fit(X_train, y_train)
+
+    best_preds, rest_preds = [], []
+    for i, row in enumerate(X_test):
+        pred = dt.predict([row])
+        if pred == "best":
+            best_preds.append(data.rows[i])
+        else:
+            rest_preds.append(data.rows[i])
+    return best_preds, rest_preds
