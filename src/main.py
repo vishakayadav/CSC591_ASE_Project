@@ -52,7 +52,8 @@ def main():
         count = 0
         create_preprocessed_csv(options["file"])
         data = DATA(options["file"])  # read in the data to get "all" result
-        preprocessed_data = DATA(os.path.splitext(options["file"])[0] + "_encoded.csv")
+        preprocessed_data = DATA(os.path.join(
+            os.path.dirname(options["file"]), "processed", os.path.basename(options["file"])))
         while count < options["niter"]:
             best, rest, evals = data.sway()  # get the "sway" results
             rule, _ = xpln(data, best, rest)  # get the "xpln" results

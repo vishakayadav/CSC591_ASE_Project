@@ -1,4 +1,5 @@
 import math
+import os
 import random
 from copy import deepcopy
 from pathlib import Path
@@ -195,7 +196,7 @@ def create_preprocessed_csv(file_path):
     syms = [col for col in columns if col.strip()[0].islower() and df[col].dtype == 'O']
     for sym in syms:
         df[sym] = LabelEncoder().fit_transform(df[sym].astype(str))
-    preprocessed_file_path = file_path.replace('.csv', '_encoded.csv')
+    preprocessed_file_path = os.path.join(os.path.dirname(file_path), "processed", os.path.basename(file_path))
     df.to_csv(preprocessed_file_path, index=False)
 
 
