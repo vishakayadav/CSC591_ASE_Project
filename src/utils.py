@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-import settings
+from src import settings
 
 the = settings.THE
 seed = settings.SEED
@@ -237,74 +237,14 @@ def value(has: dict, nb: int = 1, nr: int = 1, sgoal=None) -> float:
     return b ** 2 / (b + r)
 
 
-def RX(t: list, s: str) -> dict:
-    t.sort()
-    return {"name": s or "", "rank": 0, "n": len(t), "show": "", "has": t}
-
-
-def mid(t):
-    t = t["has"] if "has" in t else t
-    n = (len(t) - 1) // 2
-    return (t[n] + t[n + 1]) / 2 if len(t) % 2 == 0 else t[n + 1]
-
-
-def div(t):
-    t = t["has"] if "has" in t else t
-    return (t[len(t) * 9 // 10] - t[len(t) * 1 // 10]) / 2.56
-
-
-def merge(rx1, rx2):
-    rx3 = RX([], rx1["name"])
-    rx3["has"] = rx1["has"] + rx2["has"]
-    rx3["has"].sort()
-    rx3["n"] = len(rx3["has"])
-    return rx3
-
-
-def tiles(rxs):
-    huge = float("inf")
-    lo, hi = huge, float("-inf")
-    for rx in rxs:
-        lo, hi = min(lo, rx["has"][0]), max(hi, rx["has"][len(rx["has"]) - 1])
-    for rx in rxs:
-        t, u = rx["has"], []
-
-        def of(x, most):
-            return int(max(1, min(most, x)))
-
-        def at(x):
-            return t[of(len(t) * x // 1, len(t)) - 1]
-
-        def pos(x):
-            return math.floor(
-                of(the["width"] * (x - lo) / (hi - lo + 1e-32) // 1, the["width"])
-            )
-
-        for i in range(0, the["width"] + 1):
-            u.append(" ")
-        a, b, c, d, e = at(0.1), at(0.3), at(0.5), at(0.7), at(0.9)
-        A, B, C, D, E = pos(a), pos(b), pos(c), pos(d), pos(e)
-        for i in range(A, B + 1):
-            u[i] = "-"
-        for i in range(D, E + 1):
-            u[i] = "-"
-        u[the["width"] // 2] = "|"
-        u[C] = "*"
-        x = []
-        for i in [a, b, c, d, e]:
-            x.append(the["Fmt"] % i)
-        rx["show"] = "".join(u) + str(x)
-    return rxs
-
-
-def get_stats(data_array):
-    result = {}
+def get_mean_result(data_array):
+    mean_res = {}
     for data in data_array:
         for k, v in data.stats().items():
-            result[k] = result.get(k, 0) + v
-    for k, v in result.items():
-        result[k] /= the['niter']
-    return result
+            mean_res[k] = mean_res.get(k, 0) + v
+    for k, v in mean_res.items():
+        mean_res[k] /= the['niter']
+    return mean_res
 
 
 # Test Engine util function
