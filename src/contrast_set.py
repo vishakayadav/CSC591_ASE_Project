@@ -109,7 +109,7 @@ def decision_tree(data, best, rest):
     """
     Converts the rows of best and rest into feature vectors and class labels,
     Fits a decision tree classifier on the combined training set, and
-    Predicts the class labels for each row in the data object ,thereby classifying data into best and rest.
+    Predicts the class labels for each row in the data object, thereby classifying data into best and rest.
     """
     X_best = [[row.cells[col.at] for col in best.cols.x] for row in best.rows]
     y_best = ["best"] * len(best.rows)
