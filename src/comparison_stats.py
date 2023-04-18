@@ -71,6 +71,67 @@ def bootstrap(y0: list, z0: list) -> bool:
             n += 1
     return n / the["bootstrap"] >= the["conf"]
 
+
+def kruskal_wallis_stats(data, result_table, stats):
+    print('KW significance level: ', the["SigLevel"] / 100)
+    sways = ['sway1', 'sway2', 'sway3']
+    xplns = ['xpln1', 'xpln2', 'xpln3']
+    kw_sways, kw_xplns = [], []
+
+    for col in data.cols.y:
+        sway_avgs = [stats["sway1"][col.txt], stats["sway2"][col.txt], stats["sway3"][col.txt]]
+        xpln_avgs = [stats["xpln1"][col.txt], stats["xpln2"][col.txt], stats["xpln3"][col.txt]]
+
+        if col.w == -1:
+            sway_best_avg = min(sway_avgs)
+            xpln_best_avg = min(xpln_avgs)
+        else:
+            sway_best_avg = max(sway_avgs)
+            xpln_best_avg = max(xpln_avgs)
+
+        best_sway = sways[sway_avgs.index(sway_best_avg)]
+        best_xpln = xplns[xpln_avgs.index(xpln_best_avg)]
+
+        sway1_col = [row.cells[col.at] for best in result_table["sway1"] for row in best.rows]
+        sway2_col = [row.cells[col.at] for best in result_table["sway2"] for row in best.rows]
+        sway3_col = [row.cells[col.at] for best in result_table["sway3"] for row in best.rows]
+        xpln1_col = [row.cells[col.at] for best in result_table["xpln1"] for row in best.rows]
+        xpln2_col = [row.cells[col.at] for best in result_table["xpln2"] for row in best.rows]
+        xpln3_col = [row.cells[col.at] for best in result_table["xpln3"] for row in best.rows]
+
+        num_groups = len(sways)
+        sway_p_values_kruskal = np.zeros((num_groups, num_groups))
+        xpln_p_values_kruskal = np.zeros((num_groups, num_groups))
+
+        for i in range(num_groups):
+            for j in range(i + 1, num_groups):
+                _, sway_p_value_kruskal = kruskal(sway1_col, sway2_col, sway3_col)
+                sway_p_values_kruskal[i, j] = sway_p_value_kruskal
+                sway_p_values_kruskal[j, i] = sway_p_value_kruskal
+
+                _, xpln_p_value_kruskal = kruskal(xpln1_col, xpln2_col, xpln3_col)
+                xpln_p_values_kruskal[i, j] = xpln_p_value_kruskal
+                xpln_p_values_kruskal[j, i] = xpln_p_value_kruskal
+
+        sway_krusal_df = pd.DataFrame(sway_p_values_kruskal, index=sways, columns=sways)
+        xpln_krusal_df = pd.DataFrame(xpln_p_values_kruskal, index=xplns, columns=xplns)
+
+        sway_kw_sig = set(sway_krusal_df.iloc[list(np.where(sway_krusal_df >= the["SigLevel"])[0])].index)
+        xpln_kw_sig = set(xpln_krusal_df.iloc[list(np.where(xpln_krusal_df >= the["SigLevel"])[0])].index)
+
+        if len(sway_kw_sig) == 0:
+            kw_sways.append([best_sway])
+        else:
+            kw_sways.append(list(sway_kw_sig))
+
+        if len(xpln_kw_sig) == 0:
+            kw_xplns.append([best_xpln])
+        else:
+            kw_xplns.append(list(xpln_kw_sig))
+
+    return kw_sways, kw_xplns
+
+
 class ScottKnott():
     def __init__(self):
         self.rxs = []
