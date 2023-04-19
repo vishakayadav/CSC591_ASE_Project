@@ -2,12 +2,13 @@ import os.path
 import re
 import sys
 
+from src.study.hbo import HBO
 from tabulate import tabulate
 
-from src.comparison_stats import bootstrap, cliffs_delta
+from src.comparison_stats import bootstrap, cliffs_delta, ScottKnott, kruskal_wallis_stats
 from src.contrast_set import xpln, selects, decision_tree
 from src.data import DATA
-from src.utils import coerce, the, help_string, result_table, comparisons, get_stats, create_preprocessed_csv
+from src.utils import coerce, help_string, result_table, comparisons, get_mean_result, create_preprocessed_csv, the
 
 
 def settings(pstr):
@@ -49,36 +50,66 @@ def main():
     if options["help"]:
         print(help_string)
     else:
+        no_of_evals = {"all": 0, "sway1": 0, "sway2": 0, "sway3": 0, "xpln1": 0, "xpln2": 0, "xpln3": 0, "top": 0}
+        ranks = {"all": 0, "sway1": 0, "sway2": 0, "sway3": 0, "xpln1": 0, "xpln2": 0, "xpln3": 0, "top": 0}
+
         count = 0
         create_preprocessed_csv(options["file"])
         data = DATA(options["file"])  # read in the data to get "all" result
-        preprocessed_data = DATA(os.path.join(
-            os.path.dirname(options["file"]), "processed", os.path.basename(options["file"])))
-        while count < options["niter"]:
-            best, rest, evals = data.sway()  # get the "sway" results
-            rule, _ = xpln(data, best, rest)  # get the "xpln" results
+        data = DATA(os.path.join(os.path.dirname(options["file"]), "processed", os.path.basename(options["file"])))
+        best_params, hpo_evals = HBO().hpo_hyperopt_params()
 
-            best2, rest2, evals2 = preprocessed_data.sway2()  # get the "sway" results
-            best_xpln2, rest_xpln2 = decision_tree(preprocessed_data, best2, rest2)  # get the "xpln" results
+        # normalize the rank of rows from 1-100 where ranking is done on the basis of zitzler predicate
+        total_rows = len(data.rows)
+        for i, row in enumerate(data.betters(total_rows)[0]):
+            row.rank = 1 + (i/total_rows)*99
+
+        while count < options["niter"]:
+            best, rest, evals = data.sway()  # get the "sway1" results
+            rule, _ = xpln(data, best, rest)  # get the "xpln1" results
+
+            best2, rest2, evals2 = data.sway2(best_params, hpo_evals)  # get the "sway2" results
+            best_xpln2, rest_xpln2 = decision_tree(data, best2, rest2)  # get the "xpln3" results
+
+            best3, rest3, evals3 = data.sway3()  # get the "sway3" results
+            best_xpln3, rest_xpln3 = decision_tree(data, best3, rest3)  # get the "xpln3" results
 
             # if rule is present
             if rule:
                 # store best data for each algo
-                top, _ = data.betters(len(best.rows))
-                result_table['all']['data'].append(data)
-                result_table['sway1']['data'].append(best)
-                result_table['sway2']['data'].append(best2)
-                result_table['xpln1']['data'].append(DATA(data, selects(rule, data.rows)))
-                result_table['xpln2']['data'].append(DATA(preprocessed_data, best_xpln2))
-                result_table['top']['data'].append(DATA(data, top))
+                xpln1 = DATA(data, selects(rule, data.rows))
+                xpln2 = DATA(data, best_xpln2)
+                xpln3 = DATA(data, best_xpln3)
 
-                # store no. of evaluations for each algo
-                result_table['all']['evals'] += 0  # 0 evals to get "all" data
-                result_table['sway1']['evals'] += evals  # sway() returns the evals
-                result_table['sway2']['evals'] += evals
-                result_table['xpln1']['evals'] += evals  # xpln() uses data from sway so same evals
-                result_table['xpln2']['evals'] += evals
-                result_table['top']['evals'] += len(data.rows)  # betters() evaluates on each row
+                top, _ = data.betters(len(best.rows))
+                top = DATA(data, top)
+
+                result_table['all'].append(data)
+                result_table['sway1'].append(best)
+                result_table['sway2'].append(best2)
+                result_table['sway3'].append(best3)
+                result_table['xpln1'].append(xpln1)
+                result_table['xpln2'].append(xpln2)
+                result_table['xpln3'].append(xpln3)
+                result_table['top'].append(top)
+
+                ranks['all'] += sum([r.rank for r in data.rows]) // len(data.rows)
+                ranks['sway1'] += sum([r.rank for r in best.rows]) // len(best.rows)
+                ranks['sway2'] += sum([r.rank for r in best2.rows]) // len(best2.rows)
+                ranks['sway3'] += sum([r.rank for r in best2.rows]) // len(best3.rows)
+                ranks['xpln1'] += sum([r.rank for r in xpln1.rows]) // len(xpln1.rows)
+                ranks['xpln2'] += sum([r.rank for r in xpln2.rows]) // len(xpln2.rows)
+                ranks['xpln3'] += sum([r.rank for r in xpln3.rows]) // len(xpln3.rows)
+                ranks['top'] += sum([r.rank for r in top.rows]) // len(top.rows)
+
+                no_of_evals["all"] += 0
+                no_of_evals["sway1"] += evals
+                no_of_evals["sway2"] += evals2
+                no_of_evals["sway3"] += evals3
+                no_of_evals["xpln1"] += evals
+                no_of_evals["xpln2"] += evals2
+                no_of_evals["xpln3"] += evals3
+                no_of_evals["top"] += len(data.rows)
 
                 for i in range(len(comparisons)):
                     (base, diff), result = comparisons[i]
@@ -88,15 +119,15 @@ def main():
 
                     for k in range(len(data.cols.y)):
                         if comparisons[i][1][k] == "=":
-                            base_y = result_table[base]["data"][count].cols.y[k]
-                            diff_y = result_table[diff]["data"][count].cols.y[k]
+                            base_y = result_table[base][count].cols.y[k]
+                            diff_y = result_table[diff][count].cols.y[k]
                             equals = bootstrap(base_y.vals(), diff_y.vals()) and \
                                      cliffs_delta(base_y.vals(), diff_y.vals())
 
                             if not equals:
                                 if base == diff:  # when comparing same algo on same data should never fail
                                     print(f"WARNING: {base} to {diff} comparison failed for {k}")
-                                    print(f"""Preview: {result_table[base]["data"][count].cols.y[k].txt}""")
+                                    print(f"""Preview: {result_table[base][count].cols.y[k].txt}""")
 
                                 comparisons[i][1][k] = "≠"
                 count += 1
@@ -104,26 +135,40 @@ def main():
         # generate the stats table
         headers = [y.txt for y in data.cols.y]
         data_table = []
-
-        result_table["sway1 (half)"] = result_table.pop("sway1")
-        result_table["sway2 (kmeans)"] = result_table.pop("sway2")
-        result_table["xpln1"] = result_table.pop("xpln1")
-        result_table["xpln2 (kmeans & dtree)"] = result_table.pop("xpln2")
-        result_table["top"] = result_table.pop("top")
+        sknott = ScottKnott()
+        stats = {}
 
         for k, v in result_table.items():
-            stats = get_stats(v["data"])
-            stats_list = [k] + [stats[y] for y in headers]
-            stats_list += [v['evals'] / options['niter']]
+            new_k = k.replace("sway2", "sway2 (hpo)").replace("sway3", "sway3 (kmeans)") \
+                .replace("xpln2", "xpln2 (hpo & dtree)").replace("xpln3", "xpln3 (kmeans & dtree)")
+            stats[k] = get_mean_result(v)
+            stats_list = [new_k] + [stats[k][y] for y in headers]
+            stats_list += [no_of_evals[k] // options["niter"]]   # add avg number of evals
+            stats_list += [ranks[k] // options["niter"]]         # add avg rank of rows
             data_table.append(stats_list)
+            if k not in ["all", "top"]:
+                sknott.rxs.append(sknott.RX(list(stats[k].values()), k))
 
-        print(tabulate(data_table, headers=headers + ["n_evals avg"], numalign="right"))
+        print(tabulate(data_table, headers=headers + ["Evals", "Rank"], numalign="right"))
         print()
 
         comparison_table = []
         for [base, diff], result in comparisons:
             comparison_table.append([f"{base} to {diff}"] + result)
         print(tabulate(comparison_table, headers=headers, numalign="right"))
+
+        print("\n\nKruskal-Wallis Statistical Evaluation on the above Algos")
+        kw_table = []
+        kw_sways, kw_xplns = kruskal_wallis_stats(data, result_table, stats, )
+        kw_table.append(["Best Sways"] + kw_sways)
+        kw_table.append(["Best Xplns"] + kw_xplns)
+        print(tabulate(kw_table, headers=headers, numalign="right"))
+
+        print("\n\nScottKnott Ranking")
+        sknott.scott_knot()
+        sknott.tiles()
+        for rx in sknott.rxs:
+            print(rx["name"], rx["rank"], rx["show"])
 
     sys.exit(fails)
 

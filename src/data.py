@@ -244,7 +244,28 @@ class DATA:
         best, rest, evals = worker(data.rows, [], 0)
         return self.clone(best), self.clone(rest), evals
 
-    def sway2(self) -> ("DATA", "DATA", int):
+    def sway2(self, best_params, hpo_evals) -> ("DATA", "DATA", int):
+        """
+        Recursively prune the worst half the data with the best hyperparameter using hyperopt
+        :return: the survivors and some sample of the rest
+        """
+        data = self
+
+        def worker(rows, worse, evals0=None, above=None):
+            if len(rows) <= len(data.rows) ** best_params["min"]:
+                return rows, utils.many(worse, best_params["rest"] * len(rows)), evals0
+            else:
+                l, r, A, B, c, evals = self.half(rows=rows, above=above)
+                if self.better_zitzler(B, A):
+                    l, r, A, B = r, l, B, A
+                for row in r:
+                    worse.append(row)
+                return worker(l, worse, evals + evals0, A)
+
+        best, rest, evals = worker(data.rows, [], 0)
+        return self.clone(best), self.clone(rest), evals + hpo_evals
+
+    def sway3(self) -> ("DATA", "DATA", int):
         """
         Recursively prune the worst cluster of the data, where clustering is using kmeans
         :return: the survivors and some sample of the rest
