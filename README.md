@@ -27,6 +27,7 @@ Welcome to CSC591_ASE_Project 👋
   3. Data files are present at [/etc/data](https://github.com/vishakayadav/CSC591_ASE_Project/tree/main/etc/data) folder
   4. After execution, outputs are automatically stored in [/etc/out](https://github.com/vishakayadav/CSC591_ASE_Project/tree/main/etc/out) folder
   5. A [script](run.sh) is used to generate all output. It iterates over all data files, runs them through our program, and concatenates output to the output directory
+  6. Ablation Study output for the files (performed study on) could be found at [/etc/out/ablation_study/](https://github.com/vishakayadav/CSC591_ASE_Project/tree/main/etc/out/ablation_study) folder
 
 
 ### Author
