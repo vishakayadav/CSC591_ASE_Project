@@ -35,7 +35,7 @@ HPO Hyperopt Best Params: {'Far': 0.9, 'Halves': 2012, 'Max': 12, 'bins': 7, 'co
 all                            2098        0      50
 sway1                        417.85        6      13
 sway2 (hpo)                  1843.9        8      46
-sway3 (kmeans)                  145        7     734
+sway3 (kmeans)                  145        7       3
 xpln1                        906.35        6      29
 xpln2 (hpo & dtree)         1825.75        8      46
 xpln3 (kmeans & dtree)       289.95        7      11

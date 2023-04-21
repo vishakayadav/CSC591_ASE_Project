@@ -96,7 +96,7 @@ def main():
                 ranks['all'] += sum([r.rank for r in data.rows]) // len(data.rows)
                 ranks['sway1'] += sum([r.rank for r in best.rows]) // len(best.rows)
                 ranks['sway2'] += sum([r.rank for r in best2.rows]) // len(best2.rows)
-                ranks['sway3'] += sum([r.rank for r in best2.rows]) // len(best3.rows)
+                ranks['sway3'] += sum([r.rank for r in best3.rows]) // len(best3.rows)
                 ranks['xpln1'] += sum([r.rank for r in xpln1.rows]) // len(xpln1.rows)
                 ranks['xpln2'] += sum([r.rank for r in xpln2.rows]) // len(xpln2.rows)
                 ranks['xpln3'] += sum([r.rank for r in xpln3.rows]) // len(xpln3.rows)
