@@ -1,0 +1,39 @@
+Original Sway
+all  {'CityMPG+': 21.0, 'HighwayMPG+': 28.0, 'Weight-': 3040.0, 'Class-': 17.7, 'N': 93}
+     {'CityMPG+': 4.65, 'HighwayMPG+': 5.04, 'Weight-': 585.27, 'Class-': 9.57, 'N': 93}
+
+best {'CityMPG+': 24.0, 'HighwayMPG+': 30.0, 'Weight-': 3040.0, 'Class-': 16.5, 'N': 4}
+     {'CityMPG+': 1.16, 'HighwayMPG+': 1.55, 'Weight-': 44.57, 'Class-': 1.47, 'N': 4}
+
+rest {'CityMPG+': 21.0, 'HighwayMPG+': 27.0, 'Weight-': 2970.0, 'Class-': 15.9, 'N': 16}
+     {'CityMPG+': 3.49, 'HighwayMPG+': 2.71, 'Weight-': 437.98, 'Class-': 6.47, 'N': 16}
+
+Sway with Reuse = False
+all  {'CityMPG+': 21.0, 'HighwayMPG+': 28.0, 'Weight-': 3040.0, 'Class-': 17.7, 'N': 93}
+     {'CityMPG+': 4.65, 'HighwayMPG+': 5.04, 'Weight-': 585.27, 'Class-': 9.57, 'N': 93}
+
+best {'CityMPG+': 29.0, 'HighwayMPG+': 33.0, 'Weight-': 2240.0, 'Class-': 8.6, 'N': 5}
+     {'CityMPG+': 8.14, 'HighwayMPG+': 6.59, 'Weight-': 251.94, 'Class-': 0.89, 'N': 5}
+
+rest {'CityMPG+': 20.0, 'HighwayMPG+': 28.0, 'Weight-': 3085.0, 'Class-': 16.5, 'N': 20}
+     {'CityMPG+': 3.49, 'HighwayMPG+': 4.65, 'Weight-': 625.97, 'Class-': 8.45, 'N': 20}
+
+Sway with Halves increased to 1000
+all  {'CityMPG+': 21.0, 'HighwayMPG+': 28.0, 'Weight-': 3040.0, 'Class-': 17.7, 'N': 93}
+     {'CityMPG+': 4.65, 'HighwayMPG+': 5.04, 'Weight-': 585.27, 'Class-': 9.57, 'N': 93}
+
+best {'CityMPG+': 33.0, 'HighwayMPG+': 37.0, 'Weight-': 1965.0, 'Class-': 8.4, 'N': 4}
+     {'CityMPG+': 8.14, 'HighwayMPG+': 6.59, 'Weight-': 211.24, 'Class-': 0.27, 'N': 4}
+
+rest {'CityMPG+': 20.0, 'HighwayMPG+': 28.0, 'Weight-': 2890.0, 'Class-': 18.8, 'N': 16}
+     {'CityMPG+': 4.65, 'HighwayMPG+': 3.1, 'Weight-': 465.12, 'Class-': 10.62, 'N': 16}
+
+Sway with min reduced to 0.2
+all  {'CityMPG+': 21.0, 'HighwayMPG+': 28.0, 'Weight-': 3040.0, 'Class-': 17.7, 'N': 93}
+     {'CityMPG+': 4.65, 'HighwayMPG+': 5.04, 'Weight-': 585.27, 'Class-': 9.57, 'N': 93}
+
+best {'CityMPG+': 29.0, 'HighwayMPG+': 33.0, 'Weight-': 2270.0, 'Class-': 9.2, 'N': 1}
+     {'CityMPG+': 0.0, 'HighwayMPG+': 0.0, 'Weight-': 0.0, 'Class-': 0.0, 'N': 1}
+
+rest {'CityMPG+': 19.0, 'HighwayMPG+': 27.0, 'Weight-': 3085.0, 'Class-': 19.7, 'N': 4}
+     {'CityMPG+': 2.33, 'HighwayMPG+': 3.49, 'Weight-': 377.91, 'Class-': 4.07, 'N': 4}
