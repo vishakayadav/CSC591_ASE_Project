@@ -1,0 +1,34 @@
+# This is a basic workflow to test HW1
+
+name: Test Report
+
+# Controls when the action will run.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "greet"
+  Build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Setup
+      run: python setup.py install
+    - name: Run main
+      run: python src/main.py -f ./etc/data/auto2.csv
+    - run: echo "🍏 This job's status is ${{ job.status }}."

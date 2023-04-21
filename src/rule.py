@@ -17,7 +17,7 @@ class RULE:
         for txt, ranges in self.rule.items():
             n += 1
             if len(ranges) == max_size[txt]:
-                n += 1
-                self.rule[txt] = None
+                n -= 1
+                self.rule[txt] = []
         if n > 0:
             return self.rule

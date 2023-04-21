@@ -1,7 +1,10 @@
 from collections.abc import Callable
 
+from sklearn.tree import DecisionTreeClassifier
+
 from src import utils
 from src.data import DATA
+from src.discretization import bins
 from src.rule import RULE
 
 
@@ -15,19 +18,15 @@ def xpln(data: DATA, best, rest) -> (dict, float):
     def score(ranges: list) -> (float, dict):
         rule = RULE().create(ranges, max_sizes)
         if rule:
-            print(show_rule(rule))
             bestr = selects(rule, best.rows)
             restr = selects(rule, rest.rows)
             if len(bestr) + len(restr) > 0:
                 return v({"best": len(bestr), "rest": len(restr)}), rule
-            else:
-                return None, rule
+        return None, None
 
-    for ranges in utils.bins(data.cols.x, {"best": best.rows, "rest": rest.rows}):
-        max_sizes[ranges[1]["txt"]] = len(ranges)
-        print("")
+    for ranges in bins(data.cols.x, {"best": best.rows, "rest": rest.rows}):
+        max_sizes[ranges[0]["txt"]] = len(ranges)
         for range in ranges:
-            print(range["txt"], range["lo"], range["hi"])
             tmp.append({"range": range, "max": len(ranges), "val": v(range["y"].has)})
     rule, most = first_n(sorted(tmp, key=lambda k: k["val"], reverse=True), score)
     return rule, most
@@ -36,19 +35,7 @@ def xpln(data: DATA, best, rest) -> (dict, float):
 def first_n(
     sorted_ranges: list, score_fun: Callable[[list], (float, dict)]
 ) -> (dict, float):
-    print("")
 
-    def print_func(r):
-        print(
-            r["range"]["txt"],
-            r["range"]["lo"],
-            r["range"]["hi"],
-            utils.rnd(r["val"]),
-            r["range"]["y"].has,
-        )
-
-    _ = list(map(print_func, sorted_ranges))
-    print()
     first = sorted_ranges[0]["val"]
 
     def useful(range):
@@ -109,9 +96,36 @@ def selects(rule: dict, rows: list) -> list:
                 return False
         return True
 
-    # return list(filter(lambda r: conjunction(r), rows))
     def function(r):
         if conjunction(r):
             return r
+        else:
+            return None
 
-    return list(map(function, rows))
+    return list(filter(function, rows))
+
+
+def decision_tree(data, best, rest):
+    """
+    Converts the rows of best and rest into feature vectors and class labels,
+    Fits a decision tree classifier on the combined training set, and
+    Predicts the class labels for each row in the data object, thereby classifying data into best and rest.
+    """
+    X_best = [[row.cells[col.at] for col in best.cols.x] for row in best.rows]
+    y_best = ["best"] * len(best.rows)
+    X_rest = [[row.cells[col.at] for col in rest.cols.x] for row in rest.rows]
+    y_rest = ["rest"] * len(rest.rows)
+    X_test = [[row.cells[col.at] for col in data.cols.x] for row in data.rows]
+
+    X_train, y_train = X_best + X_rest, y_best + y_rest
+    dt = DecisionTreeClassifier(random_state=0)
+    dt.fit(X_train, y_train)
+
+    best_preds, rest_preds = [], []
+    for i, row in enumerate(X_test):
+        pred = dt.predict([row])
+        if pred == "best":
+            best_preds.append(data.rows[i])
+        else:
+            rest_preds.append(data.rows[i])
+    return best_preds, rest_preds

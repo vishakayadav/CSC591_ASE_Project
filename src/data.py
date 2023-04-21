@@ -1,5 +1,9 @@
 import math
+from functools import cmp_to_key
 from typing import Union, List, Tuple
+
+import numpy as np
+from sklearn.cluster import KMeans
 
 from src import utils
 from src.cols import COLS
@@ -10,15 +14,17 @@ from src.utils import csv, the, cosine, kap
 
 
 class DATA:
-    def __init__(self, src: any) -> None:
+    def __init__(self, src: Union[str, list, "DATA"] = None, rows: Union[list, ROW] = None) -> None:
         self.rows = []
         self.cols = None
 
-        if isinstance(src, str):
-            csv(src, self.add)
-        else:
-            for row in src:
-                self.add(row)
+        if src or rows:
+            if isinstance(src, str):
+                csv(src, self.add)
+            else:
+                self.cols = COLS(src.cols.names)
+                for row in rows:
+                    self.add(row)
 
     def add(self, t: Union[ROW, list]) -> None:
         """
@@ -33,24 +39,29 @@ class DATA:
         else:
             self.cols = COLS(t)  # here, we create "i.cols" from the first row
 
-    def clone(self, init: list = []) -> "DATA":
+    def clone(self, init: list = None) -> "DATA":
         """
         Returns a clone with the same structure
         :param init: Initial data for the clone
         :return:
         """
-        data = DATA([self.cols.names])
-        list(map(data.add, init))
+        if init is None:
+            init = []
+
+        data = DATA()
+        data.add(self.cols.names)
+
+        for _, t in enumerate(init):
+            data.add(t)
+
         return data
 
-    def stats(
-        self, what: str = "mid", cols=None, n_places: int = 0
-    ) -> (Union[float, str], str):
+    def stats(self, what: str = "mid", cols=None, n_places: int = 0) -> (Union[float, str], str):
         """
         Reports mid or div of cols (defaults to i.cols.y)
-        :param what: str: (Default value = None)
-        :param cols: (Default value = None)
-        :param n_places: int: (Default value = 0)
+        :param what: str: Statistics to collect (Default value = None)
+        :param cols: Columns on which statistics is collected (Default value = None)
+        :param n_places: int: Decimal places to round (Default value = 0)
         :return: tuple(Union[float, str], str)
         """
 
@@ -60,10 +71,14 @@ class DATA:
 
         cols = cols or self.cols.y
         tmp = kap(cols, fun)
+
+        # alternative
+        # tmp = dict(sorted({col.txt: rnd(getattr(col, what)(), nPlaces) for col in cols or self.cols.y}.items()))
+
         tmp["N"] = len(self.rows)
         return tmp
 
-    def better(self, row1: ROW, row2: ROW) -> bool:
+    def better_zitzler(self, row1: ROW, row2: ROW) -> bool:
         """
         Returns true if `row1` dominates (via Zitzler04)
         :param row1: ROW
@@ -79,6 +94,25 @@ class DATA:
             s2 = s2 - math.exp(col.w * (y - x) / len(ys))
         return s1 / len(ys) < s2 / len(ys)
 
+    def better_boolean(self, row1: ROW, row2: ROW) -> bool:
+        """
+        Returns true if `row1` dominates (via Boolean Domination)
+        :param row1: ROW
+        :param row2: ROW
+        :return: bool: true if row1 dominates
+        """
+        def dominates(row1, row2):
+            dominate = False
+            for col in self.cols.y:
+                x = col.norm(row1.cells[col.at]) * col.w * -1
+                y = col.norm(row2.cells[col.at]) * col.w * -1
+                if x > y:
+                    return False
+                elif x < y:
+                    dominate = True
+            return dominate
+        return dominates(row1, row2) and not dominates(row2, row1)
+
     def dist(self, row1: ROW, row2: ROW, cols: List[Union[NUM, SYM]] = None) -> float:
         """
         Returns distance between the two rows
@@ -92,35 +126,6 @@ class DATA:
             n += 1
             d += col.dist(row1.cells[col.at], row2.cells[col.at]) ** the["p"]
         return (d / n) ** (1 / the["p"])
-
-    def around(
-        self, row1: ROW, rows: List[ROW] = None, cols: List[Union[NUM, SYM]] = None
-    ) -> List[dict]:
-        """
-        Sorts other `rows` by distance to `row1`
-        :param row1: ROW
-        :param rows: List[ROW]
-        :param cols: List[Union[NUM, SYM]]
-        :return: List of dictionary with distances of each row from `row1`
-        """
-
-        def func(row2):
-            return {"row": row2, "dist": self.dist(row1, row2, cols)}
-
-        return sorted(list(map(func, rows or self.rows)), key=lambda x: x["dist"])
-
-    def furthest(
-        self, row1: ROW, rows: List[ROW] = None, cols: List[Union[NUM, SYM]] = None
-    ) -> dict:
-        """
-        Sort other `rows` by distance to `row1` and get the farthest row
-        :param row1: ROW
-        :param rows: List[ROW]
-        :param cols: List[Union[NUM, SYM]]
-        :return: Farthest row from `row1`
-        """
-        t = self.around(row1, rows, cols)
-        return t[len(t) - 1]
 
     def half(
         self,
@@ -143,25 +148,52 @@ class DATA:
         rows = rows if rows else self.rows
         some = utils.many(rows, the["Halves"])
         A = (the["Reuse"] and above) or utils.any(some)
-        tmp = sorted(
-            map(lambda r: {"row": r, "d": dist(r, A)}, some), key=lambda x: x["d"]
-        )
-        far = tmp[int(the["Far"] * len(rows)) // 1]
+        tmp = sorted(map(lambda r: {"row": r, "d": dist(r, A)}, some), key=lambda x: x["d"])
+        far = tmp[int((len(tmp) - 1) * the['Far'])]
         B = far["row"]
         c = far["d"]
         left = []
         right = []
 
-        for n, tmp in enumerate(
-            sorted(list(map(project, rows)), key=lambda k: k["dist"])
-        ):
-            if n < len(rows) // 2:
+        for n, tmp in enumerate(sorted(list(map(project, rows)), key=lambda k: k["dist"])):
+            if (n + 1) < (len(rows) / 2):
                 left.append(tmp["row"])
             else:
                 right.append(tmp["row"])
 
         evals = 1 if the["Reuse"] and above else 2
         return left, right, A, B, c, evals
+
+    def kmeans(self, rows: List[ROW] = None) -> (list, list, ROW, ROW, int):
+        """
+        K-Means Clustering
+        :param rows: input data to be clustered
+        :return: left and right cluster with their respective centroids A and B
+        """
+        def dist(center, row, A):
+            A = A or row
+            return row if self.dist(A, center) > self.dist(A, row) else A
+
+        left = []
+        right = []
+
+        rows = rows or self.rows
+        row_set = np.array([row.cells for row in rows])
+        kmeans = KMeans(random_state=the['seed'], n_clusters=2, n_init=10)
+        kmeans.fit(row_set)
+        centroid1 = ROW(kmeans.cluster_centers_[0])
+        centroid2 = ROW(kmeans.cluster_centers_[1])
+
+        A, B, evals = None, None, 1
+        for key, value in enumerate(kmeans.labels_):
+            if value == 0:
+                A = dist(centroid1, rows[key], A)
+                left.append(rows[key])
+            else:
+                B = dist(centroid2, rows[key], B)
+                right.append(rows[key])
+
+        return left, right, A, B, evals
 
     def cluster(
         self,
@@ -203,11 +235,53 @@ class DATA:
                 return rows, utils.many(worse, the["rest"] * len(rows)), evals0
             else:
                 l, r, A, B, c, evals = self.half(rows=rows, above=above)
-                if self.better(B, A):
+                if self.better_zitzler(B, A):
                     l, r, A, B = r, l, B, A
                 for row in r:
                     worse.append(row)
                 return worker(l, worse, evals + evals0, A)
+
+        best, rest, evals = worker(data.rows, [], 0)
+        return self.clone(best), self.clone(rest), evals
+
+    def sway2(self, best_params, hpo_evals) -> ("DATA", "DATA", int):
+        """
+        Recursively prune the worst half the data with the best hyperparameter using hyperopt
+        :return: the survivors and some sample of the rest
+        """
+        data = self
+
+        def worker(rows, worse, evals0=None, above=None):
+            if len(rows) <= len(data.rows) ** best_params["min"]:
+                return rows, utils.many(worse, best_params["rest"] * len(rows)), evals0
+            else:
+                l, r, A, B, c, evals = self.half(rows=rows, above=above)
+                if self.better_zitzler(B, A):
+                    l, r, A, B = r, l, B, A
+                for row in r:
+                    worse.append(row)
+                return worker(l, worse, evals + evals0, A)
+
+        best, rest, evals = worker(data.rows, [], 0)
+        return self.clone(best), self.clone(rest), evals + hpo_evals
+
+    def sway3(self) -> ("DATA", "DATA", int):
+        """
+        Recursively prune the worst cluster of the data, where clustering is using kmeans
+        :return: the survivors and some sample of the rest
+        """
+        data = self
+
+        def worker(rows, worse, evals0=None):
+            if len(rows) <= len(data.rows) ** the["min"]:
+                return rows, utils.many(worse, the["rest"] * len(rows)), evals0
+            else:
+                l, r, A, B, evals = self.kmeans(rows)
+                if self.better_zitzler(B, A):
+                    l, r, A, B = r, l, B, A
+                for row in r:
+                    worse.append(row)
+                return worker(l, worse, evals + evals0)
 
         best, rest, evals = worker(data.rows, [], 0)
         return self.clone(best), self.clone(rest), evals
@@ -221,6 +295,6 @@ class DATA:
         """
         tmp = sorted(
             self.rows,
-            key=lambda row: self.better(row, self.rows[self.rows.index(row) - 1]),
+            key=cmp_to_key(lambda row1, row2: -1 if self.better_zitzler(row1, row2) else 1)
         )
-        return n and tmp[0:n], tmp[n + 1 :] or tmp
+        return n and tmp[1:n], tmp[n+1:] or tmp
